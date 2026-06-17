@@ -10,8 +10,8 @@ CORS(app)
 vectorizer = joblib.load('vectorizer.pkl')
 baseline_model = joblib.load('model.pkl')
 
-tokenizer = DistilBertTokenizer.from_pretrained('distilbert_model')
-distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert_model')
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
 distilbert_model.eval()
 
 @app.route('/predict', methods=['POST'])
@@ -22,7 +22,6 @@ def predict():
     if not text:
         return jsonify({'error': 'No text provided'}), 400
 
-    # Short inputs can't be injection attacks
     if len(text.split()) < 4:
         return jsonify({
             'text': text,
@@ -56,4 +55,4 @@ def health():
     return jsonify({'status': 'running'})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=10000)

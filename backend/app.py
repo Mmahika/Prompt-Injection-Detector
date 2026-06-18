@@ -1,18 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
-import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-vectorizer = joblib.load('vectorizer.pkl')
-baseline_model = joblib.load('model.pkl')
-
-tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
-distilbert_model.eval()
+base_dir = os.path.dirname(os.path.abspath(__file__))
+vectorizer = joblib.load(os.path.join(base_dir, 'vectorizer.pkl'))
+model = joblib.load(os.path.join(base_dir, 'model.pkl'))
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -29,20 +25,11 @@ def predict():
             'confidence': 99.0
         })
 
-    inputs = tokenizer(text, return_tensors='pt',
-                      max_length=128, truncation=True, padding='max_length')
-    with torch.no_grad():
-        outputs = distilbert_model(**inputs)
-        probs = torch.softmax(outputs.logits, dim=1)
-        injection_prob = probs[0][1].item()
-        safe_prob = probs[0][0].item()
-
-    if injection_prob > 0.85:
-        result = 'injection'
-        confidence = round(injection_prob * 100, 2)
-    else:
-        result = 'safe'
-        confidence = round(safe_prob * 100, 2)
+    features = vectorizer.transform([text])
+    pred = model.predict(features)[0]
+    proba = model.predict_proba(features)[0]
+    confidence = round(max(proba) * 100, 2)
+    result = 'injection' if pred == 1 else 'safe'
 
     return jsonify({
         'text': text,

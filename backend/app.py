@@ -26,10 +26,16 @@ def predict():
         })
 
     features = vectorizer.transform([text])
-    pred = model.predict(features)[0]
     proba = model.predict_proba(features)[0]
-    confidence = round(max(proba) * 100, 2)
-    result = 'injection' if pred == 1 else 'safe'
+    injection_prob = proba[1]
+    safe_prob = proba[0]
+
+    if injection_prob > 0.80:
+        result = 'injection'
+        confidence = round(injection_prob * 100, 2)
+    else:
+        result = 'safe'
+        confidence = round(safe_prob * 100, 2)
 
     return jsonify({
         'text': text,
